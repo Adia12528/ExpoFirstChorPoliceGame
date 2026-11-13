@@ -9,6 +9,7 @@ import { detectLanServer, normalizeServerUrl, testServerConnection } from '../di
 import type { Conn } from '../useGame';
 import type { Prefs } from '../storage';
 import type { Ack } from '../types';
+import { DEFAULT_SERVER_URL, OFFICIAL_RENDER_URL } from '../constants';
 import { C } from '../theme';
 
 export function Home({
@@ -36,6 +37,7 @@ export function Home({
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateStatus, setUpdateStatus] = useState('');
+  const [copyFeedback, setCopyFeedback] = useState('');
 
   // Auto-check for server updates when serverUrl is set
   useEffect(() => {
@@ -58,6 +60,19 @@ export function Home({
       setUpdateStatus('✓ App updated hai! Koi naya version nahi hai.');
       setTimeout(() => setUpdateStatus(''), 4000);
     }
+  };
+
+  const handleCopyRenderUrl = async () => {
+    await Clipboard.setStringAsync(OFFICIAL_RENDER_URL);
+    setCopyFeedback('✓ Render URL Copied!');
+    setTimeout(() => setCopyFeedback(''), 3000);
+  };
+
+  const handleUseOfficialRender = () => {
+    setPrefs({ ...prefs, serverUrl: OFFICIAL_RENDER_URL });
+    setCopyFeedback('✓ Render URL set as server!');
+    setTimeout(() => setCopyFeedback(''), 3000);
+    handleConnectRender(OFFICIAL_RENDER_URL);
   };
 
   const handleConnectRender = async (customUrl?: string) => {
@@ -243,9 +258,36 @@ export function Home({
 
               <View style={s.divider} />
 
-              <View style={{ gap: 8 }}>
-                <Text style={s.label}>🌐 Connect to Render (Internet / 4G)</Text>
-                <Text style={s.hint}>Render ka app name ya URL daalein (e.g. `chor-police-live` ya `https://xxxx.onrender.com`):</Text>
+                            <View style={{ gap: 8 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={s.label}>🌐 Official Render Server</Text>
+                  <Chip text="Online 4G/WiFi" color={C.ok} />
+                </View>
+                <Text style={s.hint}>Default server: {OFFICIAL_RENDER_URL}</Text>
+                
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <Btn
+                    small
+                    style={{ flex: 1 }}
+                    color={C.police}
+                    title="📋 Copy Render URL"
+                    onPress={handleCopyRenderUrl}
+                  />
+                  <Btn
+                    small
+                    style={{ flex: 1 }}
+                    color={C.chor}
+                    title="⚡ Reset to Default"
+                    onPress={handleUseOfficialRender}
+                  />
+                </View>
+
+                {copyFeedback ? <Text style={[s.hint, { color: C.ok }]}>{copyFeedback}</Text> : null}
+
+                <View style={s.divider} />
+
+                <Text style={s.label}>Custom Server URL badalna ho to:</Text>
+                <Text style={s.hint}>Agar apna koi naya Render URL ya Wi-Fi link lagana hai:</Text>
                 <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                   <TextInput
                     value={renderInput}

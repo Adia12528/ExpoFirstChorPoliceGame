@@ -5,7 +5,8 @@ export const LOOT_RANGE = 10; // m
 export const WEAK_GPS = 25; // m accuracy
 
 // Set EXPO_PUBLIC_SERVER_URL in .env, or change it inside the app (⚙️ Server on the home screen).
-export const DEFAULT_SERVER_URL = process.env.EXPO_PUBLIC_SERVER_URL ?? 'http://192.168.1.5:3000';
+export const DEFAULT_SERVER_URL = process.env.EXPO_PUBLIC_SERVER_URL ?? 'https://chor-police-live.onrender.com';
+export const OFFICIAL_RENDER_URL = 'https://chor-police-live.onrender.com';
 
 export interface GuideSection {
   title: string;
