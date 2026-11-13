@@ -69,16 +69,47 @@ function createServer(overrides = {}) {
     const parsedUrl = new URL(req.url, `http://${host}`);
     const pathname = parsedUrl.pathname;
 
-    if (pathname === '/api/info') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
+    const getApkInfo = () => {
+      const candidates = [
+        path.join(__dirname, '../app/android/app/build/outputs/apk/release/app-release.apk'),
+        path.join(__dirname, '../app/android/app/build/outputs/apk/debug/app-debug.apk'),
+        path.join(__dirname, '../dist/chor-police.apk'),
+        path.join(__dirname, 'chor-police.apk'),
+      ];
+      for (const p of candidates) {
+        if (fs.existsSync(p)) {
+          const stat = fs.statSync(p);
+          return { exists: true, size: stat.size, mtime: stat.mtimeMs, path: p };
+        }
+      }
+      return { exists: false, size: 0, mtime: 0, path: null };
+    };
+
+    if (pathname === '/api/info' || pathname === '/api/version') {
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      });
       const ips = getLocalIps();
+      const apk = getApkInfo();
+      let serverPkg = { version: '1.0.1' };
+      try {
+        serverPkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
+      } catch {}
+
       return res.end(JSON.stringify({
         status: 'online',
         app: 'chor-police-server',
-        version: '1.0.0',
+        version: serverPkg.version || '1.0.1',
+        latestAppVersion: serverPkg.version || '1.0.1',
+        apkAvailable: apk.exists,
+        apkSize: apk.size,
+        apkUpdatedAt: apk.mtime,
+        apkDownloadUrl: '/download/app.apk',
         activeRooms: rooms.size,
         ips: ips.map((i) => i.address),
         defaults: DEFAULTS,
+        changelog: 'Latest multiplayer abilities, compass radar, and auto-update support!',
       }));
     }
 

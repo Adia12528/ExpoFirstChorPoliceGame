@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Btn, Card, Chip } from '../components/UI';
 import { GuideButton } from '../components/GuideModal';
+import { UpdateModal } from '../components/UpdateModal';
+import { checkForUpdate, CURRENT_VERSION, UpdateInfo } from '../updater';
 import { detectLanServer, normalizeServerUrl, testServerConnection } from '../discovery';
 import type { Conn } from '../useGame';
 import type { Prefs } from '../storage';
@@ -31,6 +33,32 @@ export function Home({
   const [renderInput, setRenderInput] = useState('');
   const [testingServer, setTestingServer] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState('');
+
+  // Auto-check for server updates when serverUrl is set
+  useEffect(() => {
+    if (prefs.serverUrl) {
+      checkForUpdate(prefs.serverUrl).then((u) => {
+        if (u && u.hasUpdate) setUpdateInfo(u);
+      });
+    }
+  }, [prefs.serverUrl]);
+
+  const handleManualCheckUpdate = async () => {
+    setCheckingUpdate(true);
+    setUpdateStatus('Updates check kar rahe hain…');
+    const u = await checkForUpdate(prefs.serverUrl);
+    setCheckingUpdate(false);
+    if (u && u.hasUpdate) {
+      setUpdateInfo(u);
+      setUpdateStatus('');
+    } else {
+      setUpdateStatus('✓ App updated hai! Koi naya version nahi hai.');
+      setTimeout(() => setUpdateStatus(''), 4000);
+    }
+  };
 
   const handleConnectRender = async (customUrl?: string) => {
     const raw = (customUrl ?? renderInput).trim() || prefs.serverUrl;
@@ -245,10 +273,29 @@ export function Home({
                 </View>
                 <Switch value={prefs.fake} onValueChange={(fake) => setPrefs({ ...prefs, fake })} trackColor={{ true: C.ok, false: C.card2 }} />
               </View>
+
+              <View style={s.divider} />
+
+              <View style={{ gap: 8 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={s.label}>🔄 App Updates</Text>
+                  <Chip text={`v${CURRENT_VERSION}`} color={C.dim} />
+                </View>
+                <Btn
+                  small
+                  ghost
+                  color={C.chor}
+                  title={checkingUpdate ? 'Checking…' : '🔄 Check for Updates'}
+                  disabled={checkingUpdate}
+                  onPress={handleManualCheckUpdate}
+                />
+                {updateStatus ? <Text style={[s.hint, { color: updateStatus.startsWith('✓') ? C.ok : C.warn }]}>{updateStatus}</Text> : null}
+              </View>
             </Card>
           )}
         </View>
       </ScrollView>
+      <UpdateModal update={updateInfo} onDismiss={() => setUpdateInfo(null)} />
     </KeyboardAvoidingView>
   );
 }

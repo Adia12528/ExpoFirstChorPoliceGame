@@ -1,6 +1,6 @@
 {
   "name": "chor-police-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Realtime server for the Chor-Police GPS game (Socket.io, in-memory, no DB)",
   "main": "server.js",
   "scripts": {
