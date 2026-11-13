@@ -1,0 +1,20 @@
+{
+  "name": "chor-police-server",
+  "version": "1.0.0",
+  "description": "Realtime server for the Chor-Police GPS game (Socket.io, in-memory, no DB)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/sim.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.1"
+  }
+}
