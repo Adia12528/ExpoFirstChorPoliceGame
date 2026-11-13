@@ -9,7 +9,7 @@ import { ARREST_RANGE, FREE_RANGE, LOOT_RANGE, WEAK_GPS } from '../constants';
 import { compass } from '../geo';
 import { buzz } from '../haptics';
 import { emitAck } from '../net';
-import { playSfx } from '../sound';
+import { playSfx, setProximityHeat, stopMusic } from '../sound';
 import { useCompass } from '../useCompass';
 import { C, HEAT_COLORS, teamColor } from '../theme';
 import type { Ack, FeedItem, GameView } from '../types';
@@ -78,15 +78,20 @@ export function Game({
   const playing = view.phase === 'playing';
   const level = view.heat?.level ?? 0;
 
-  // heartbeat haptics and sounds
+  // heartbeat haptics, tension audio and proximity sonar
   useEffect(() => {
-    if (!playing || view.status === 'jailed') return;
+    if (!playing || view.status === 'jailed') {
+      setProximityHeat(0);
+      return;
+    }
+    setProximityHeat(level);
     if (level === 4) {
-      buzz('heavy');
+      buzz('radarPing');
       playSfx('radar');
     } else if (level === 3) {
       buzz('medium');
     }
+    return () => setProximityHeat(0);
   }, [view, playing, level]);
 
   // Audio triggers on CCTV and loot
@@ -117,8 +122,12 @@ export function Game({
 
   const act = async (ev: 'arrest' | 'free') => {
     const r = await emitAck<Ack>(ev);
-    buzz(r.ok ? 'success' : 'error');
-    if (r.ok) playSfx(ev === 'arrest' ? 'arrest' : 'freed');
+    if (r.ok) {
+      buzz(ev === 'arrest' ? 'arrest' : 'escape');
+      playSfx(ev === 'arrest' ? 'arrest' : 'freed');
+    } else {
+      buzz('error');
+    }
     setActionMsg({ text: r.msg ?? (r.ok ? 'Ho gaya!' : 'Nahi hua'), ok: r.ok });
     if (msgTimer.current) clearTimeout(msgTimer.current);
     msgTimer.current = setTimeout(() => setActionMsg(null), 3500);
@@ -127,7 +136,7 @@ export function Game({
   const useAbility = async () => {
     const r = await emitAck<Ack>('ability:use');
     if (r.ok) {
-      buzz('heavy');
+      buzz(isPolice ? 'heavy' : 'escape');
       playSfx(isPolice ? 'boost' : 'smoke');
     } else {
       buzz('error');

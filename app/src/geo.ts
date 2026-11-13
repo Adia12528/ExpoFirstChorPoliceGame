@@ -6,6 +6,13 @@ export interface LatLon {
   lon: number;
 }
 
+/** Distance in metres between two GPS coordinates using Equirectangular projection */
+export function dist(a: LatLon, b: LatLon): number {
+  const x = (b.lon - a.lon) * RAD * Math.cos(((a.lat + b.lat) / 2) * RAD);
+  const y = (b.lat - a.lat) * RAD;
+  return Math.hypot(x, y) * R;
+}
+
 /** Point `dx` metres east and `dy` metres north of `origin` (used only by the fake-GPS test mode). */
 export function destination(origin: LatLon, dx: number, dy: number): LatLon {
   return {

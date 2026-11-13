@@ -1,20 +1,26 @@
 export const C = {
-  bg: '#0A0E1A',
-  card: '#121829',
-  card2: '#182037',
-  line: '#232E4A',
-  text: '#E8ECF8',
-  dim: '#8592B3',
-  police: '#4C8DFF',
-  chor: '#FF5A5F',
-  loot: '#FFC83D',
-  ok: '#3DDC97',
-  warn: '#FFB020',
-  danger: '#FF3B4A',
+  bg: '#080C18',
+  card: '#101626',
+  card2: '#161F36',
+  line: '#202C48',
+  text: '#F1F5F9',
+  dim: '#94A3B8',
+  police: '#38BDF8', // Cyan-Blue Neon
+  policeDark: '#0284C7',
+  policeBg: '#08172E',
+  chor: '#F43F5E', // Rose-Purple Neon
+  chorDark: '#E11D48',
+  chorBg: '#2A0C16',
+  loot: '#FBBF24', // Amber Gold
+  ok: '#34D399',
+  warn: '#F59E0B',
+  danger: '#EF4444',
+  neonBorder: '#38BDF844',
 } as const;
 
 export type Role = 'chor' | 'police' | null;
 
 export const teamColor = (r: Role) => (r === 'chor' ? C.chor : r === 'police' ? C.police : C.dim);
 export const oppositeColor = (r: Role) => (r === 'chor' ? C.police : r === 'police' ? C.chor : C.dim);
-export const HEAT_COLORS = ['#3B4A6B', '#4C8DFF', '#FFC83D', '#FF8A3D', '#FF3B4A'] as const;
+export const roleBgColor = (r: Role) => (r === 'chor' ? C.chorBg : r === 'police' ? C.policeBg : C.bg);
+export const HEAT_COLORS = ['#334155', '#38BDF8', '#FBBF24', '#FB923C', '#EF4444'] as const;

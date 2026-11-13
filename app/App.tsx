@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Btn } from './src/components/UI';
+import { RoleRevealModal } from './src/components/RoleRevealModal';
 import { DEFAULT_SERVER_URL } from './src/constants';
 import { getSocket } from './src/net';
 import { Game } from './src/screens/Game';
@@ -12,12 +13,14 @@ import { Lobby } from './src/screens/Lobby';
 import { Result } from './src/screens/Result';
 import { loadPrefs, Prefs, savePrefs } from './src/storage';
 import { setSoundEnabled } from './src/sound';
-import { C } from './src/theme';
+import { C, roleBgColor } from './src/theme';
 import { useGame } from './src/useGame';
 import { useGps } from './src/useGps';
 
 export default function App() {
   const [prefs, setPrefs] = useState<Prefs | null>(null);
+  const [revealRole, setRevealRole] = useState<'chor' | 'police' | null>(null);
+  const [hasRevealed, setHasRevealed] = useState(false);
 
   useEffect(() => {
     // Safety timer to guarantee splash screen dismisses within 800ms no matter what
@@ -40,6 +43,7 @@ export default function App() {
 
     return () => clearTimeout(hideTimer);
   }, []);
+
   useEffect(() => {
     if (prefs) {
       void savePrefs(prefs);
@@ -50,6 +54,18 @@ export default function App() {
   const game = useGame(prefs);
   const gps = useGps(!!game.roomCode, !!prefs?.fake);
   const { roomCode, leave } = game;
+
+  // Trigger Role Reveal animation when transitioning from lobby to game
+  useEffect(() => {
+    if (game.view && (game.view.phase === 'headstart' || game.view.phase === 'playing')) {
+      if (!hasRevealed && game.view.role) {
+        setRevealRole(game.view.role);
+        setHasRevealed(true);
+      }
+    } else {
+      setHasRevealed(false);
+    }
+  }, [game.view, hasRevealed]);
 
   // stream my GPS fix to the server once a second (only fresh fixes — never replay stale data)
   useEffect(() => {
@@ -76,6 +92,11 @@ export default function App() {
   }, [roomCode, leave]);
 
   let body: React.ReactNode;
+  const currentRole = game.view?.role ?? null;
+  const activeBg = (game.view && (game.view.phase === 'headstart' || game.view.phase === 'playing'))
+    ? roleBgColor(currentRole)
+    : C.bg;
+
   if (!prefs) {
     body = (
       <View style={s.center}>
@@ -130,8 +151,13 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
-      <SafeAreaView style={s.root} edges={['top', 'bottom']}>
+      <SafeAreaView style={[s.root, { backgroundColor: activeBg }]} edges={['top', 'bottom']}>
         {body}
+        <RoleRevealModal
+          visible={!!revealRole}
+          role={revealRole}
+          onFinish={() => setRevealRole(null)}
+        />
       </SafeAreaView>
     </SafeAreaProvider>
   );

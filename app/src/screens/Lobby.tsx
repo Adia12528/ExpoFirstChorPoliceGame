@@ -27,7 +27,6 @@ export function Lobby({
   onLeave: () => void;
 }) {
   useKeepAwake();
-  const [rules, setRules] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [copied, setCopied] = useState(false);
   const [err, setErr] = useState('');
@@ -61,8 +60,9 @@ export function Lobby({
 
   return (
     <ScrollView contentContainerStyle={s.wrap}>
-      <Card style={{ alignItems: 'center', gap: 8 }}>
-        <Text style={s.dim}>ROOM CODE</Text>
+      {/* Tactical Room Header Card */}
+      <Card style={{ alignItems: 'center', gap: 6, borderColor: C.police, borderWidth: 1.5 }}>
+        <Text style={s.kicker}>SECRET ROOM CODE</Text>
         <Text style={s.code}>{lobby.code}</Text>
 
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
@@ -70,7 +70,7 @@ export function Lobby({
             small
             ghost
             color={C.police}
-            title={showQr ? 'Chhupao QR' : '📷 Scan QR'}
+            title={showQr ? 'Chhupao QR' : '📱 Scan QR'}
             onPress={() => setShowQr(!showQr)}
           />
           <Btn
@@ -83,15 +83,19 @@ export function Lobby({
           <Btn
             small
             ghost
-            color={C.dim}
+            color={C.loot}
             title="📤 Share"
-            onPress={() => Share.share({ message: `Chor-Police khelte hain! App kholo → Join → room code: ${lobby.code}` })}
+            onPress={() =>
+              Share.share({
+                message: `Chor-Police khelte hain! App kholo → Join → Room Code: ${lobby.code}`,
+              })
+            }
           />
         </View>
 
         {showQr && (
           <View style={s.qrBox}>
-            <QRCode value={qrData} size={160} backgroundColor="#FFFFFF" color="#0A0E1A" />
+            <QRCode value={qrData} size={160} backgroundColor="#FFFFFF" color="#080C18" />
             <Text style={s.qrHint}>Dost isko scan karein ya Room Code daalein</Text>
             {serverUrl ? <Text style={s.serverHint}>Server: {serverUrl}</Text> : null}
           </View>
@@ -105,41 +109,69 @@ export function Lobby({
           <Btn small title="Settings kholo" onPress={() => Linking.openSettings()} color={C.danger} />
         </Card>
       )}
+
       {fake && (
         <Card style={{ borderColor: C.ok }}>
           <Text style={{ color: C.ok, fontWeight: '800' }}>🧪 Test mode ON — fake GPS use ho raha hai</Text>
+          <Text style={s.dim}>Game ke andar screen ke D-pad se chalo.</Text>
         </Card>
       )}
 
-      <Card>
-        <Text style={s.h}>
-          Players ({online.length}/12)
-        </Text>
+      {/* Players Tactical List */}
+      <Card style={{ gap: 4 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <Text style={s.h}>Squad Players ({online.length}/12)</Text>
+          <Chip text={online.length >= 2 ? 'READY TO PLAY' : 'NEED PLAYERS'} color={online.length >= 2 ? C.ok : C.warn} />
+        </View>
+
         {lobby.players.map((p) => (
-          <View key={p.id} style={s.row}>
-            <Text style={s.name} numberOfLines={1}>
-              {p.isHost ? '👑 ' : ''}
-              {p.name}
-              {p.id === myId ? '  (tum)' : ''}
-            </Text>
+          <View key={p.id} style={s.playerCard}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+              <View style={[s.avatarCircle, { backgroundColor: p.isHost ? C.chorBg : C.policeBg }]}>
+                <Text style={{ fontSize: 16 }}>{p.isHost ? '👑' : '⚡'}</Text>
+              </View>
+              <Text style={s.name} numberOfLines={1}>
+                {p.name}
+                {p.id === myId ? ' (tum)' : ''}
+              </Text>
+            </View>
+
             {!p.connected ? (
               <Chip text="offline" color={C.danger} />
             ) : p.gps.ok && (p.gps.acc ?? 99) <= WEAK_GPS ? (
-              <Chip text={`GPS ✓ ±${p.gps.acc}m`} color={C.ok} />
+              <Chip text={`GPS ±${p.gps.acc}m`} color={C.ok} />
             ) : p.gps.ok ? (
-              <Chip text={`GPS weak ±${p.gps.acc}m`} color={C.warn} />
+              <Chip text={`Weak ±${p.gps.acc}m`} color={C.warn} />
             ) : (
-              <Chip text="GPS dhundh raha…" color={C.warn} />
+              <Chip text="GPS Searching…" color={C.warn} />
             )}
           </View>
         ))}
-        {!gpsOk && perm !== 'denied' && <Text style={[s.dim, { marginTop: 8 }]}>Khule aasman ke neeche jao — GPS lock hone mein 10-20 second lagte hain.</Text>}
+
+        {!gpsOk && perm !== 'denied' && (
+          <Text style={[s.dim, { marginTop: 8 }]}>
+            Khule aasman ke neeche jao — GPS lock hone mein 5-15 second lagte hain.
+          </Text>
+        )}
       </Card>
 
+      {/* Settings Stepper Card */}
       <Card>
-        <Text style={s.h}>Game settings {isHost ? '' : '(host badal sakta hai)'}</Text>
-        <Stepper label="📍 Zone ka radius" value={`${st.radius} m`} editable={isHost} onMinus={() => set({ radius: st.radius - 25 })} onPlus={() => set({ radius: st.radius + 25 })} />
-        <Stepper label="⏱️ Game ka time" value={`${Math.round(st.duration / 60)} min`} editable={isHost} onMinus={() => set({ duration: st.duration - 60 })} onPlus={() => set({ duration: st.duration + 60 })} />
+        <Text style={s.h}>Game Settings {isHost ? '' : '(Host control)'}</Text>
+        <Stepper
+          label="📍 Zone ka radius"
+          value={`${st.radius} m`}
+          editable={isHost}
+          onMinus={() => set({ radius: st.radius - 25 })}
+          onPlus={() => set({ radius: st.radius + 25 })}
+        />
+        <Stepper
+          label="⏱️ Game ka time"
+          value={`${Math.round(st.duration / 60)} min`}
+          editable={isHost}
+          onMinus={() => set({ duration: st.duration - 60 })}
+          onPlus={() => set({ duration: st.duration + 60 })}
+        />
         <Stepper
           label="😈 Chors ki ginti"
           value={st.chors === null ? `Auto (${lobby.suggestedChors})` : String(st.chors)}
@@ -147,7 +179,13 @@ export function Lobby({
           onMinus={() => set({ chors: Math.max(1, chors - 1) })}
           onPlus={() => set({ chors: Math.min(maxChors, chors + 1) })}
         />
-        <Stepper label="💰 Maal ki ginti" value={String(st.loot)} editable={isHost} onMinus={() => set({ loot: st.loot - 1 })} onPlus={() => set({ loot: st.loot + 1 })} />
+        <Stepper
+          label="💰 Maal ki ginti"
+          value={String(st.loot)}
+          editable={isHost}
+          onMinus={() => set({ loot: st.loot - 1 })}
+          onPlus={() => set({ loot: st.loot + 1 })}
+        />
         <Stepper
           label="🙈 Chors ka head-start"
           value={st.headStart === 0 ? 'Nahi' : `${st.headStart} s`}
@@ -155,17 +193,23 @@ export function Lobby({
           onMinus={() => set({ headStart: st.headStart - 10 })}
           onPlus={() => set({ headStart: st.headStart + 10 })}
         />
-        <Text style={[s.dim, { marginTop: 6 }]}>Zone ka center = start dabate waqt host ki location.</Text>
+        <Text style={[s.dim, { marginTop: 6 }]}>Zone center = Start dabate waqt Host ki location banegi.</Text>
       </Card>
 
       <Card>
         <GuideButton label="📖 Game Kaise Khelte Hain? (Poori Guide)" />
       </Card>
 
+      {/* Launch Actions */}
       {isHost ? (
-        <View style={{ gap: 8 }}>
-          <Btn title={starting ? 'Shuru ho raha hai…' : '🚨  GAME SHURU KARO'} color={C.chor} disabled={starting || online.length < 2 || !gpsOk} onPress={start} />
-          {online.length < 2 && <Text style={s.center}>Kam se kam 2 players chahiye</Text>}
+        <View style={{ gap: 8, marginTop: 4 }}>
+          <Btn
+            title={starting ? 'Shuru ho raha hai…' : '🚨  GAME SHURU KARO'}
+            color={C.chor}
+            disabled={starting || online.length < 2 || !gpsOk}
+            onPress={start}
+          />
+          {online.length < 2 && <Text style={s.center}>Kam se kam 2 players chahiye khelne ke liye</Text>}
           {online.length >= 2 && !gpsOk && <Text style={s.center}>Pehle apna GPS lock hone do</Text>}
           {err ? <Text style={[s.center, { color: C.danger }]}>{err}</Text> : null}
         </View>
@@ -174,6 +218,7 @@ export function Lobby({
           <Text style={{ color: C.text, fontWeight: '700' }}>⏳ Host ke game shuru karne ka intezaar…</Text>
         </Card>
       )}
+
       <Btn title="Room chhodo" ghost small color={C.dim} onPress={onLeave} />
     </ScrollView>
   );
@@ -181,14 +226,37 @@ export function Lobby({
 
 const s = StyleSheet.create({
   wrap: { padding: 14, gap: 12, paddingBottom: 40 },
+  kicker: { color: C.dim, fontSize: 11, fontWeight: '800', letterSpacing: 2 },
   dim: { color: C.dim, fontSize: 13, lineHeight: 19 },
-  code: { color: C.text, fontSize: 58, fontWeight: '900', letterSpacing: 12, marginLeft: 12 },
-  h: { color: C.text, fontSize: 16, fontWeight: '800', marginBottom: 6 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, borderTopWidth: 1, borderTopColor: C.line },
-  name: { color: C.text, fontSize: 16, fontWeight: '600', flex: 1, paddingRight: 8 },
-  rule: { color: C.text, fontSize: 14, lineHeight: 21, marginTop: 10 },
+  code: { color: C.text, fontSize: 52, fontWeight: '900', letterSpacing: 10, textAlign: 'center' },
+  h: { color: C.text, fontSize: 16, fontWeight: '800' },
+  playerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: C.line,
+  },
+  avatarCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: C.line,
+  },
+  name: { color: C.text, fontSize: 15, fontWeight: '700', flex: 1 },
   center: { color: C.dim, textAlign: 'center', fontSize: 13 },
-  qrBox: { marginTop: 12, alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 16 },
-  qrHint: { color: '#0A0E1A', fontSize: 12, fontWeight: '700', marginTop: 10, textAlign: 'center' },
-  serverHint: { color: '#4B5563', fontSize: 11, fontFamily: 'monospace', marginTop: 4, textAlign: 'center' },
+  qrBox: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  qrHint: { color: '#080C18', fontSize: 12, fontWeight: '700' },
+  serverHint: { color: '#64748B', fontSize: 10 },
 });

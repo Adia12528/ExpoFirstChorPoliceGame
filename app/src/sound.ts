@@ -1,13 +1,22 @@
 import { createAudioPlayer } from 'expo-audio';
 
 let soundEnabled = true;
+let musicEnabled = true;
+let masterVolume = 0.85;
 
 export function setSoundEnabled(enabled: boolean) {
   soundEnabled = enabled;
+  if (!enabled) {
+    stopMusic();
+  }
 }
 
 export function isSoundEnabled() {
   return soundEnabled;
+}
+
+export function setMasterVolume(v: number) {
+  masterVolume = Math.max(0, Math.min(1, v));
 }
 
 // Pure JS base64 encoder that works in Hermes / React Native without global btoa
@@ -27,8 +36,12 @@ function uint8ToBase64(bytes: Uint8Array): string {
   return result;
 }
 
-// Generate procedurally synthesized 8-bit PCM WAV audio data URIs
-function createToneWav(freq: number, durationSec = 0.2, type: 'sine' | 'chirp' | 'siren' | 'noise' = 'sine'): string {
+// Procedurally synthesize 8-bit PCM WAV audio buffers
+function createToneWav(
+  freq: number,
+  durationSec = 0.2,
+  type: 'sine' | 'chirp' | 'siren' | 'noise' | 'heartbeat' | 'win' | 'lose' = 'sine',
+): string {
   try {
     const sampleRate = 8000;
     const numSamples = Math.floor(sampleRate * durationSec);
@@ -75,13 +88,26 @@ function createToneWav(freq: number, durationSec = 0.2, type: 'sine' | 'chirp' |
       if (type === 'sine') {
         s = Math.sin(2 * Math.PI * freq * t);
       } else if (type === 'chirp') {
-        const f = freq + (t / durationSec) * freq * 1.4;
+        const f = freq + (t / durationSec) * freq * 1.5;
         s = Math.sin(2 * Math.PI * f * t);
       } else if (type === 'siren') {
         const f = freq + Math.sin(2 * Math.PI * 7 * t) * 260;
         s = Math.sin(2 * Math.PI * f * t);
       } else if (type === 'noise') {
         s = Math.random() * 2 - 1;
+      } else if (type === 'heartbeat') {
+        // Deep thumping pulse
+        const decay = Math.exp(-t * 18);
+        s = Math.sin(2 * Math.PI * freq * t) * decay;
+      } else if (type === 'win') {
+        // Fanfare chord synthesis
+        const f1 = freq;
+        const f2 = freq * 1.25;
+        const f3 = freq * 1.5;
+        s = (Math.sin(2 * Math.PI * f1 * t) + Math.sin(2 * Math.PI * f2 * t) + Math.sin(2 * Math.PI * f3 * t)) / 3;
+      } else if (type === 'lose') {
+        const f = freq * (1 - (t / durationSec) * 0.45);
+        s = Math.sin(2 * Math.PI * f * t);
       }
       const val = Math.floor((s * 0.7 + 1) * 127.5);
       bytes[44 + i] = Math.max(0, Math.min(255, val));
@@ -93,9 +119,21 @@ function createToneWav(freq: number, durationSec = 0.2, type: 'sine' | 'chirp' |
   }
 }
 
-export type SfxName = 'loot' | 'siren' | 'cctv' | 'arrest' | 'freed' | 'radar' | 'smoke' | 'boost';
+export type SfxName =
+  | 'loot'
+  | 'siren'
+  | 'cctv'
+  | 'arrest'
+  | 'freed'
+  | 'radar'
+  | 'smoke'
+  | 'boost'
+  | 'heartbeat'
+  | 'countdown'
+  | 'win'
+  | 'lose';
 
-// Lazy sound generator — only synthesized on first play, NEVER on app startup!
+// Lazy sound generator — cached on first play
 const sfxCache = new Map<SfxName, string>();
 function getSfxData(name: SfxName): string {
   if (sfxCache.has(name)) return sfxCache.get(name)!;
@@ -103,28 +141,40 @@ function getSfxData(name: SfxName): string {
   let uri = '';
   switch (name) {
     case 'loot':
-      uri = createToneWav(880, 0.16, 'chirp');
+      uri = createToneWav(920, 0.16, 'chirp');
       break;
     case 'siren':
       uri = createToneWav(650, 0.45, 'siren');
       break;
     case 'cctv':
-      uri = createToneWav(1100, 0.35, 'siren');
+      uri = createToneWav(1150, 0.35, 'siren');
       break;
     case 'arrest':
-      uri = createToneWav(320, 0.35, 'noise');
+      uri = createToneWav(280, 0.4, 'noise');
       break;
     case 'freed':
-      uri = createToneWav(520, 0.28, 'chirp');
+      uri = createToneWav(560, 0.28, 'chirp');
       break;
     case 'radar':
-      uri = createToneWav(750, 0.08, 'sine');
+      uri = createToneWav(780, 0.08, 'sine');
       break;
     case 'smoke':
-      uri = createToneWav(220, 0.4, 'noise');
+      uri = createToneWav(180, 0.45, 'noise');
       break;
     case 'boost':
-      uri = createToneWav(440, 0.3, 'chirp');
+      uri = createToneWav(480, 0.32, 'chirp');
+      break;
+    case 'heartbeat':
+      uri = createToneWav(75, 0.18, 'heartbeat');
+      break;
+    case 'countdown':
+      uri = createToneWav(600, 0.12, 'sine');
+      break;
+    case 'win':
+      uri = createToneWav(523.25, 0.65, 'win'); // C Major triumphant chord
+      break;
+    case 'lose':
+      uri = createToneWav(330, 0.55, 'lose');
       break;
   }
   sfxCache.set(name, uri);
@@ -147,6 +197,38 @@ export function playSfx(name: SfxName) {
     player?.seekTo?.(0);
     player?.play?.();
   } catch {
-    // Graceful fallback if audio is not supported on this device
+    // Graceful fallback
+  }
+}
+
+// Tension Proximity Heartbeat Engine
+let proximityInterval: ReturnType<typeof setInterval> | null = null;
+let currentHeatLevel = 0;
+
+export function setProximityHeat(level: number) {
+  currentHeatLevel = level;
+  if (level <= 0 || !soundEnabled) {
+    if (proximityInterval) {
+      clearInterval(proximityInterval);
+      proximityInterval = null;
+    }
+    return;
+  }
+
+  // Interval decreases as danger increases (level 1: 1500ms, level 4: 450ms)
+  const ms = Math.max(400, 1600 - level * 300);
+  if (proximityInterval) clearInterval(proximityInterval);
+
+  proximityInterval = setInterval(() => {
+    if (currentHeatLevel > 0 && soundEnabled) {
+      playSfx('heartbeat');
+    }
+  }, ms);
+}
+
+export function stopMusic() {
+  if (proximityInterval) {
+    clearInterval(proximityInterval);
+    proximityInterval = null;
   }
 }
