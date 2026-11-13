@@ -98,7 +98,7 @@ function createServer(overrides = {}) {
       });
       const ips = getLocalIps();
       const apk = getApkInfo();
-      let serverPkg = { version: '1.0.1' };
+      let serverPkg = { version: '1.1.0' };
       try {
         serverPkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
       } catch {}
@@ -111,11 +111,11 @@ function createServer(overrides = {}) {
         apkAvailable: true,
         apkSize: apk.size,
         apkUpdatedAt: apk.mtime,
-        apkDownloadUrl: 'https://github.com/Adia12528/ExpoFirstChorPoliceGame/releases/download/v1.0.0/chor-police.apk',
+        apkDownloadUrl: 'https://github.com/Adia12528/ExpoFirstChorPoliceGame/releases/download/v1.1.0/chor-police.apk',
         activeRooms: rooms.size,
         ips: ips.map((i) => i.address),
         defaults: DEFAULTS,
-        changelog: 'Latest multiplayer abilities, compass radar, and auto-update support!',
+        changelog: 'v1.1.0: Wanted Chor Bounty, Shrinking Zone, Decoy Traps, Jailbreak Minigame, and 60fps Interpolation!',
       }));
     }
 

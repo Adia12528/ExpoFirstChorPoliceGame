@@ -5,7 +5,7 @@ import { normalizeServerUrl } from './discovery';
 
 export const CURRENT_VERSION = '1.0.0';
 export const GITHUB_REPO = 'Adia12528/ExpoFirstChorPoliceGame';
-export const DIRECT_APK_URL = 'https://github.com/Adia12528/ExpoFirstChorPoliceGame/releases/download/v1.0.0/chor-police.apk';
+export const DIRECT_APK_URL = 'https://github.com/Adia12528/ExpoFirstChorPoliceGame/releases/download/v1.1.0/chor-police.apk';
 
 export interface UpdateInfo {
   hasUpdate: boolean;
