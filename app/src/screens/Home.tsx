@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Btn, Card, Chip } from '../components/UI';
 import { GuideButton } from '../components/GuideModal';
@@ -135,12 +135,30 @@ export function Home({
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={s.wrap} keyboardShouldPersistTaps="handled">
-        <View style={{ marginTop: 18, marginBottom: 22 }}>
-          <Text style={s.kicker}>REAL DUNIYA · REAL DOST · LIVE RADAR</Text>
+        {/* Hero Header with Custom App Logo and Badges */}
+        <View style={s.heroContainer}>
+          <View style={s.logoWrapper}>
+            <Image
+              source={require('../../assets/icon.png')}
+              style={s.logoImage}
+              resizeMode="contain"
+            />
+          </View>
+          <View style={s.badgeRow}>
+            <View style={s.liveBadge}>
+              <View style={s.liveDot} />
+              <Text style={s.liveText}>GPS MULTIPLAYER</Text>
+            </View>
+            <View style={s.radarChip}>
+              <Text style={s.radarChipText}>12M RADAR</Text>
+            </View>
+          </View>
           <Text style={s.title}>
             CHOR <Text style={{ color: C.chor }}>/</Text> POLICE
           </Text>
-          <Text style={s.sub}>Dost ke 12 meter paas aate hi radar chilla uthta hai. Chhupo, bhaago, pakdo, chhudao 🚔💰</Text>
+          <Text style={s.sub}>
+            Asli maidan mein bhaago, chhupo, pakdo aur maal churao! 🏃‍♂️🚨
+          </Text>
         </View>
 
         <Card style={{ gap: 12 }}>
@@ -302,9 +320,49 @@ export function Home({
 
 const s = StyleSheet.create({
   wrap: { padding: 18, paddingBottom: 40 },
-  kicker: { color: C.dim, fontSize: 11, fontWeight: '800', letterSpacing: 2 },
-  title: { color: C.text, fontSize: 42, fontWeight: '900', letterSpacing: 1, marginTop: 6 },
-  sub: { color: C.dim, fontSize: 15, lineHeight: 22, marginTop: 8 },
+  heroContainer: { alignItems: 'center', marginTop: 10, marginBottom: 18 },
+  logoWrapper: {
+    width: 96,
+    height: 96,
+    borderRadius: 24,
+    backgroundColor: '#121829',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#232E4A',
+    shadowColor: '#4C8DFF',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 8,
+    marginBottom: 10,
+  },
+  logoImage: { width: 86, height: 86, borderRadius: 20 },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF3B4A22',
+    borderWidth: 1,
+    borderColor: '#FF3B4A88',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 5,
+  },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF3B4A' },
+  liveText: { color: '#FF5A5F', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  radarChip: {
+    backgroundColor: '#4C8DFF22',
+    borderWidth: 1,
+    borderColor: '#4C8DFF88',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  radarChipText: { color: '#4C8DFF', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  title: { color: C.text, fontSize: 34, fontWeight: '900', letterSpacing: 1.5, textAlign: 'center' },
+  sub: { color: C.dim, fontSize: 13, lineHeight: 18, textAlign: 'center', marginTop: 4, paddingHorizontal: 16 },
   label: { color: C.text, fontSize: 14, fontWeight: '700' },
   input: { backgroundColor: C.bg, borderWidth: 1, borderColor: C.line, borderRadius: 12, color: C.text, fontSize: 17, paddingHorizontal: 14, paddingVertical: 13 },
   orRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
