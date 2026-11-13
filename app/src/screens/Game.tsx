@@ -72,6 +72,8 @@ export function Game({
   const [range, setRange] = useState(60);
   const [step, setStep] = useState(2);
   const [actionMsg, setActionMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [jailProgress, setJailProgress] = useState(0);
+  const [breakingJail, setBreakingJail] = useState(false);
   const msgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const heading = useCompass(compassEnabled && !fake);
@@ -119,6 +121,25 @@ export function Game({
     },
     [],
   );
+
+  const attemptJailbreak = async () => {
+    setBreakingJail(true);
+    buzz('light');
+    const r = await emitAck<any>('jailbreak');
+    setBreakingJail(false);
+    if (r.ok) {
+      if (r.escaped) {
+        buzz('escape');
+        playSfx('freed');
+        setJailProgress(0);
+        setActionMsg({ text: '🔓 TALA TOOT GAYA! Bhaago!', ok: true });
+      } else {
+        buzz('medium');
+        setJailProgress(r.progress || 0);
+        setActionMsg({ text: `🔓 Tala pick ho raha hai (${r.progress}/${r.target})!`, ok: true });
+      }
+    }
+  };
 
   const act = async (ev: 'arrest' | 'free') => {
     const r = await emitAck<Ack>(ev);
@@ -296,10 +317,37 @@ export function Game({
         {/* action area */}
         <View style={{ marginTop: 14 }}>
           {view.status === 'jailed' ? (
-            <Card style={{ borderColor: C.chor, alignItems: 'center', gap: 4 }}>
-              <Text style={{ fontSize: 34 }}>🔒</Text>
+            <Card style={{ borderColor: C.chor, alignItems: 'center', gap: 8, padding: 16 }}>
+              <Text style={{ fontSize: 38 }}>🔒</Text>
               <Text style={{ color: C.text, fontSize: 18, fontWeight: '900' }}>Tum jail mein ho!</Text>
-              <Text style={s.dimCenter}>Radar pe dekho — koi azaad chor dost aake CHHUDAO karega. Tab tak wahin ruko.</Text>
+              <Text style={s.dimCenter}>
+                Dost ka intezaar karo ya khud tala pick karke jail todo!
+              </Text>
+
+              {/* Jailbreak Interactive Minigame */}
+              <View style={{ width: '100%', marginTop: 6, gap: 6, alignItems: 'center' }}>
+                <View style={{ flexDirection: 'row', gap: 6, width: '100%', justifyContent: 'center' }}>
+                  {[1, 2, 3, 4].map((i) => (
+                    <View
+                      key={i}
+                      style={{
+                        width: 45,
+                        height: 8,
+                        borderRadius: 4,
+                        backgroundColor: i <= jailProgress ? C.loot : C.line,
+                      }}
+                    />
+                  ))}
+                </View>
+
+                <Btn
+                  title={jailProgress >= 3 ? '💥 AAKHRI JORGE SE TODO!' : `🔓 TALA PICK KARO (${jailProgress}/4)`}
+                  color={C.loot}
+                  disabled={breakingJail}
+                  onPress={attemptJailbreak}
+                  style={{ width: '100%', marginTop: 4 }}
+                />
+              </View>
             </Card>
           ) : view.blind ? null : isPolice ? (
             <HoldButton

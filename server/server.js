@@ -47,6 +47,12 @@ const DEFAULTS = {
   TICK_MS: 1000,
   LOBBY_GRACE_MS: 15000, // disconnected lobby players are removed after this
   EMPTY_ROOM_MS: 10 * 60 * 1000,
+  ZONE_SHRINK_INTERVAL: 150, // s between zone radius shrinks (2.5 mins)
+  ZONE_SHRINK_PCT: 0.20, // 20% shrink each time down to min 40m
+  MIN_ZONE_RADIUS: 40, // m
+  BOUNTY_REVEAL_EVERY: 45, // s between Wanted Chor radar pings
+  BOUNTY_REVEAL_SEC: 5, // s Wanted Chor is exposed to police radar
+  JAILBREAK_CLICKS: 4, // clicks needed to pick jail lock
 };
 
 const autoChors = (n) => Math.max(1, Math.min(n - 1, Math.round(n * 0.38)));
@@ -486,6 +492,7 @@ function createServer(overrides = {}) {
   function spawnLoot(room) {
     const loot = [];
     const maxR = room.settings.radius * 0.75;
+    const trapIndex = room.settings.loot >= 3 ? Math.floor(Math.random() * room.settings.loot) : -1;
     for (let i = 0; i < room.settings.loot; i++) {
       let best = null;
       for (let tries = 0; tries < 200; tries++) {
@@ -498,7 +505,13 @@ function createServer(overrides = {}) {
         }
         best = pt;
       }
-      loot.push({ id: i + 1, lat: best.lat, lon: best.lon, taken: false });
+      loot.push({
+        id: i + 1,
+        lat: best.lat,
+        lon: best.lon,
+        taken: false,
+        trapped: i === trapIndex,
+      });
     }
     return loot;
   }
@@ -617,6 +630,48 @@ function createServer(overrides = {}) {
     }
 
     if (room.phase === 'playing') {
+      // 1. Dynamic Shrinking Zone check
+      if (!room.initialRadius) room.initialRadius = room.settings.radius;
+      if (!room.lastShrinkAt) room.lastShrinkAt = t;
+      if (t - room.lastShrinkAt >= cfg.ZONE_SHRINK_INTERVAL * 1000) {
+        room.lastShrinkAt = t;
+        const minR = cfg.MIN_ZONE_RADIUS || 40;
+        if (room.settings.radius > minR) {
+          const newRadius = Math.max(minR, Math.round(room.settings.radius * (1 - (cfg.ZONE_SHRINK_PCT || 0.2))));
+          room.settings.radius = newRadius;
+          toAll(room, {
+            type: 'warn',
+            haptic: 'warning',
+            msg: `⚠️ ZONE SHRINK! Zone chhota ho kar ${newRadius}m reh gaya!`,
+          });
+        }
+      }
+
+      // 2. Wanted Chor (Bounty on Richest Chor)
+      const chors = [...room.players.values()].filter((x) => x.role === 'chor');
+      let richest = null;
+      let maxLoot = 0;
+      for (const c of chors) {
+        if (c.stats.loot > maxLoot) {
+          maxLoot = c.stats.loot;
+          richest = c;
+        }
+      }
+      room.wantedId = maxLoot >= 2 ? richest.id : null;
+      if (room.wantedId && !room.lastBountyPing) room.lastBountyPing = t;
+      const bountyActive = room.wantedId && (t - (room.lastBountyPing || 0) < (cfg.BOUNTY_REVEAL_SEC || 5) * 1000);
+      if (room.wantedId && t - (room.lastBountyPing || 0) >= (cfg.BOUNTY_REVEAL_EVERY || 45) * 1000) {
+        room.lastBountyPing = t;
+        const wChor = room.players.get(room.wantedId);
+        if (wChor) {
+          toAll(room, {
+            type: 'info',
+            haptic: 'warning',
+            msg: `👑 WANTED CHOR! ${wChor.name} (${maxLoot} maal) 5s ke liye radar pe dikh raha hai!`,
+          });
+        }
+      }
+
       // loot pickup (free chors only)
       for (const c of room.players.values()) {
         if (c.role !== 'chor' || c.status !== 'free' || !fresh(c) || c.pos.acc > cfg.MAX_ACC) continue;
@@ -792,6 +847,28 @@ function createServer(overrides = {}) {
       reply({ ok: true, msg: `${best.name} pakda gaya! 🚔` });
       checkEnd(room);
       sendViews(room);
+    });
+
+    socket.on('jailbreak', (_d, ack) => {
+      const { room, p } = ctxOf(socket);
+      const reply = (r) => ack && ack(r);
+      if (!room || !p || room.phase !== 'playing') return reply({ ok: false, msg: 'Abhi nahi kar sakte' });
+      if (p.role !== 'chor' || p.status !== 'jailed') return reply({ ok: false, msg: 'Tum jail mein nahi ho' });
+      p.jailbreakProgress = (p.jailbreakProgress || 0) + 1;
+      const targetClicks = cfg.JAILBREAK_CLICKS || 4;
+      if (p.jailbreakProgress >= targetClicks) {
+        p.status = 'free';
+        p.jail = null;
+        p.jailbreakProgress = 0;
+        p.immuneUntil = now() + (cfg.IMMUNITY_MS || 10000);
+        toPlayer(p, { type: 'good', haptic: 'success', msg: '🔓 JAILBREAK! Tumne tala tod diya aur azaad ho gaye!' });
+        toAll(room, { type: 'warn', haptic: 'warning', msg: `🔓 ${p.name} ne jail ka tala tod diya!` }, (x) => x.id !== p.id);
+        reply({ ok: true, escaped: true });
+        checkEnd(room);
+        sendViews(room);
+      } else {
+        reply({ ok: true, progress: p.jailbreakProgress, target: targetClicks });
+      }
     });
 
     socket.on('free', (_d, ack) => {
