@@ -4,6 +4,8 @@ import { startActivityAsync } from 'expo-intent-launcher';
 import { normalizeServerUrl } from './discovery';
 
 export const CURRENT_VERSION = '1.0.0';
+export const GITHUB_REPO = 'Adia12528/ExpoFirstChorPoliceGame';
+export const DIRECT_APK_URL = 'https://github.com/Adia12528/ExpoFirstChorPoliceGame/releases/download/v1.0.0/chor-police.apk';
 
 export interface UpdateInfo {
   hasUpdate: boolean;
@@ -14,44 +16,85 @@ export interface UpdateInfo {
   apkSize?: number;
 }
 
-/** Check if the connected server has a newer version or fresh build */
-export async function checkForUpdate(serverUrl: string): Promise<UpdateInfo | null> {
-  const norm = normalizeServerUrl(serverUrl);
-  if (!norm) return null;
-
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 6000);
-
-  try {
-    const res = await fetch(`${norm}/api/version`, { signal: ctrl.signal });
-    clearTimeout(timer);
-    if (!res.ok) return null;
-
-    const data = await res.json();
-    if (data.app !== 'chor-police-server') return null;
-
-    const latest = data.latestAppVersion || data.version || '1.0.0';
-    const hasUpdate = isNewerVersion(latest, CURRENT_VERSION);
-
-    return {
-      hasUpdate,
-      currentVersion: CURRENT_VERSION,
-      latestVersion: latest,
-      downloadUrl: `${norm}${data.apkDownloadUrl || '/download/app.apk'}`,
-      changelog: data.changelog || 'Performance improvements and new gameplay updates.',
-      apkSize: data.apkSize,
-    };
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
+/** Check if there is an update available via Server OR GitHub Releases */
+export async function checkForUpdate(serverUrl?: string): Promise<UpdateInfo | null> {
+  // 1. Try checking connected game server first (if available)
+  if (serverUrl) {
+    const norm = normalizeServerUrl(serverUrl);
+    if (norm) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 4000);
+      try {
+        const res = await fetch(`${norm}/api/version`, { signal: ctrl.signal });
+        clearTimeout(timer);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.app === 'chor-police-server') {
+            const latest = data.latestAppVersion || data.version || '1.0.0';
+            const hasUpdate = isNewerVersion(latest, CURRENT_VERSION);
+            if (hasUpdate) {
+              const dl = data.apkDownloadUrl?.startsWith('http')
+                ? data.apkDownloadUrl
+                : `${norm}${data.apkDownloadUrl || '/download/app.apk'}`;
+              return {
+                hasUpdate: true,
+                currentVersion: CURRENT_VERSION,
+                latestVersion: latest,
+                downloadUrl: data.apkAvailable ? dl : DIRECT_APK_URL,
+                changelog: data.changelog || 'Performance improvements and new gameplay updates.',
+                apkSize: data.apkSize,
+              };
+            }
+          }
+        }
+      } catch {
+        // Fallback to GitHub check
+      } finally {
+        clearTimeout(timer);
+      }
+    }
   }
+
+  // 2. Direct GitHub Releases API Check (Super reliable fallback)
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    const ghRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
+      headers: { Accept: 'application/vnd.github.v3+json', 'User-Agent': 'ChorPoliceApp' },
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+
+    if (ghRes.ok) {
+      const release = await ghRes.json();
+      const tagName = String(release.tag_name || '').replace(/^v/i, '');
+      const hasUpdate = isNewerVersion(tagName, CURRENT_VERSION);
+
+      const apkAsset = release.assets?.find((a: any) => a.name?.endsWith('.apk'));
+      const downloadUrl = apkAsset?.browser_download_url || DIRECT_APK_URL;
+
+      if (hasUpdate) {
+        return {
+          hasUpdate: true,
+          currentVersion: CURRENT_VERSION,
+          latestVersion: tagName,
+          downloadUrl,
+          changelog: release.body || 'Naya update available hai!',
+          apkSize: apkAsset?.size,
+        };
+      }
+    }
+  } catch {
+    // Both failed
+  }
+
+  return null;
 }
 
 function isNewerVersion(remote: string, local: string): boolean {
-  if (remote === local) return false;
-  const rParts = remote.split('.').map(Number);
-  const lParts = local.split('.').map(Number);
+  if (!remote || remote === local) return false;
+  const rParts = remote.split('.').map((n) => parseInt(n, 10) || 0);
+  const lParts = local.split('.').map((n) => parseInt(n, 10) || 0);
   for (let i = 0; i < Math.max(rParts.length, lParts.length); i++) {
     const r = rParts[i] || 0;
     const l = lParts[i] || 0;
