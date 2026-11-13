@@ -1,8 +1,8 @@
 ﻿﻿# ðŸš” Chor-Police LIVE
 
-[![Download APK](https://img.shields.io/badge/Download_APK-v1.0.0-brightgreen?style=for-the-badge&logo=android)](https://github.com/Adia12528/ExpoFirstChorPoliceGame/releases/download/v1.0.0/chor-police.apk)
+[![Download APK](https://img.shields.io/badge/Download_APK-v1.1.0-brightgreen?style=for-the-badge&logo=android)](https://github.com/Adia12528/ExpoFirstChorPoliceGame/releases/download/v1.1.0/chor-police.apk)
 
-> 📲 **Direct Download:** [Click here to download chor-police.apk](https://github.com/Adia12528/ExpoFirstChorPoliceGame/releases/download/v1.0.0/chor-police.apk)
+> 📲 **Direct Download:** [Click here to download chor-police.apk](https://github.com/Adia12528/ExpoFirstChorPoliceGame/releases/download/v1.1.0/chor-police.apk)
 
 Real duniya mein dosto ke saath khelne wala GPS game. Phone ka radar batata hai ki chor/police kitne paas hai â€” 12 meter ke andar aate hi pakad sakte ho.
 
